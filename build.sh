@@ -194,9 +194,8 @@ step_brightnessctl() {
   cp -a "$SRC/brightnessctl" "$BUILD/brightnessctl"
   (
     cd "$BUILD/brightnessctl"
-    ./configure --prefix="$FINAL_PREFIX" --enable-logind
-    make -j "$JOBS"
-    make install DESTDIR="$STAGE"
+    make ENABLE_SYSTEMD=1 PREFIX="$FINAL_PREFIX"
+    make install ENABLE_SYSTEMD=1 PREFIX="$FINAL_PREFIX" DESTDIR="$STAGE"
   )
 }
 
@@ -238,6 +237,9 @@ step_test_hyprland() {
 # no missing libraries, and the session launcher's target exists.
 step_test_stage() {
   local bin=$STAGE$FINAL_PREFIX/bin b
+  # Hyprland wants a runtime directory even for --version; CI may not have one.
+  XDG_RUNTIME_DIR=$(mktemp -d)
+  export XDG_RUNTIME_DIR
   "$bin/Hyprland" --version | grep -q "^Hyprland $(hyprland_version) "
   for b in Hyprland hyprctl start-hyprland brightnessctl; do
     if ldd "$bin/$b" | grep -E 'not found|libhypr|libaquamarine'; then
@@ -246,6 +248,7 @@ step_test_stage() {
     fi
   done
   "$bin/Hyprland" --verify-config -c "$TOP/packaging/test.conf" | tail -1 | grep -q "config ok"
+  rm -rf "$XDG_RUNTIME_DIR"
 }
 
 ### Package ###
