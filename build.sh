@@ -106,6 +106,16 @@ hyprland_version() {
   cat "$SRC/Hyprland/VERSION"
 }
 
+# Hyprland's --version reports `git describe --tags` of its source.
+# Submodules are checked out without tags (as in CI), so fetch this
+# version's tag if it's missing.
+fetch_hyprland_tag() {
+  local tag
+  tag=v$(hyprland_version)
+  git -C "$SRC/Hyprland" rev-parse -q --verify "refs/tags/$tag" >/dev/null ||
+    git -C "$SRC/Hyprland" fetch --depth 1 origin "refs/tags/$tag:refs/tags/$tag"
+}
+
 ### Build-time dependencies ###
 
 step_wayland_protocols() {
@@ -177,6 +187,7 @@ step_aquamarine() {
 
 step_hyprland() {
   apply_patches Hyprland
+  fetch_hyprland_tag
   cmake -S "$SRC/Hyprland" -B "$BUILD/Hyprland" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$FINAL_PREFIX" \
@@ -229,6 +240,7 @@ step_test_stage() {
   XDG_RUNTIME_DIR=$(mktemp -d)
   export XDG_RUNTIME_DIR
   "$bin/Hyprland" --version | grep -q "^Hyprland $(hyprland_version) "
+  "$bin/Hyprland" --version | grep -q "^Tag: v$(hyprland_version),"
   for b in Hyprland hyprctl start-hyprland hyprland-static-session; do
     [ -x "$bin/$b" ] || { echo "$b: missing" >&2; return 1; }
   done
