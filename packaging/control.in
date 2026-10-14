@@ -1,7 +1,7 @@
 Package: hyprland-static
 Version: @VERSION@
 Architecture: @ARCH@
-Maintainer: heisenagent <297739722+heisenagent@users.noreply.github.com>
+Maintainer: Heisencoder <hyprland-static@heisencoder.net>
 Installed-Size: @SIZE@
 Depends: @DEPENDS@
 Recommends: hyprland, xdg-desktop-portal-hyprland, xwayland
