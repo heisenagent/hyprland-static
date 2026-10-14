@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test and package
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup
+
+      - name: Build, test and package
+        run: ./build.sh
+
+      - name: ccache statistics
+        if: always()
+        run: ccache --show-stats
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyprland-static-deb
+          path: out/*.deb
+          if-no-files-found: error
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs/

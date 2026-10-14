@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Hyprland (static)
+Comment=Hyprland with statically linked Hyprland libraries, in /opt/hyprland-static
+Exec=/opt/hyprland-static/bin/hyprland-static-session
+Type=Application
+DesktopNames=Hyprland
+Keywords=tiling;wayland;compositor;

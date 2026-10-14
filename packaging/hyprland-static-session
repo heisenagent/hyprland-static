@@ -1,0 +1,8 @@
+#!/bin/sh
+# Login-screen entry point for /opt/hyprland-static (see
+# /usr/share/wayland-sessions/hyprland-static.desktop).
+# Put this build first in PATH, so the session's own commands use the
+# matching tools: hyprctl in scripts and keybindings, and brightnessctl built
+# with logind support (brightness keys work without the "video" group).
+export PATH=/opt/hyprland-static/bin:$PATH
+exec /opt/hyprland-static/bin/start-hyprland --path /opt/hyprland-static/bin/Hyprland "$@"

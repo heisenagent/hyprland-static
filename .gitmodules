@@ -1,0 +1,55 @@
+[submodule "src/Hyprland"]
+	path = src/Hyprland
+	url = https://github.com/hyprwm/Hyprland.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprutils"]
+	path = src/hyprutils
+	url = https://github.com/hyprwm/hyprutils.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprlang"]
+	path = src/hyprlang
+	url = https://github.com/hyprwm/hyprlang.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprwire"]
+	path = src/hyprwire
+	url = https://github.com/hyprwm/hyprwire.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprgraphics"]
+	path = src/hyprgraphics
+	url = https://github.com/hyprwm/hyprgraphics.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprcursor"]
+	path = src/hyprcursor
+	url = https://github.com/hyprwm/hyprcursor.git
+	shallow = true
+	ignore = dirty
+[submodule "src/aquamarine"]
+	path = src/aquamarine
+	url = https://github.com/hyprwm/aquamarine.git
+	shallow = true
+	ignore = dirty
+[submodule "src/hyprwayland-scanner"]
+	path = src/hyprwayland-scanner
+	url = https://github.com/hyprwm/hyprwayland-scanner.git
+	shallow = true
+	ignore = dirty
+[submodule "src/glaze"]
+	path = src/glaze
+	url = https://github.com/stephenberry/glaze.git
+	shallow = true
+	ignore = dirty
+[submodule "src/wayland-protocols"]
+	path = src/wayland-protocols
+	url = https://gitlab.freedesktop.org/wayland/wayland-protocols.git
+	shallow = true
+	ignore = dirty
+[submodule "src/brightnessctl"]
+	path = src/brightnessctl
+	url = https://github.com/Hummer12007/brightnessctl.git
+	shallow = true
+	ignore = dirty
