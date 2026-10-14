@@ -57,7 +57,7 @@ jobs:
 
       # gh creates the release as a draft, uploads the package and then
       # publishes it, so the package is part of the immutable release.  The
-      # notes list every static dependency (scripts/release-notes.py), followed
+      # notes list every static dependency (scripts/release_notes.py), followed
       # by GitHub's list of merged pull requests.
       - name: Publish the pre-release
         env:

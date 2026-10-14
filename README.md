@@ -82,7 +82,7 @@ compositor).
 ## Dependency updates
 
 `.github/workflows/update-deps.yml` runs daily (and on demand from the
-Actions tab).  It runs `scripts/update-deps.py`, which moves each submodule
+Actions tab).  It runs `scripts/update_deps.py`, which moves each submodule
 in `src/` to its newest upstream release tag:
 
 - Hyprland first, then the rest;
@@ -104,7 +104,7 @@ moves them to the newest commit, not the newest release.
 
 To update by hand instead, on a clean checkout:
 
-    scripts/update-deps.py --out /tmp/update
+    python3 -m scripts.update_deps --out /tmp/update
 
 ## Releases
 
@@ -116,13 +116,20 @@ Release by pushing a tag:
     git push origin v0.56.2-3
 
 `.github/workflows/release.yml` then builds and tests the `.deb` and
-publishes a GitHub **pre-release** with it attached.  Its release notes come from `scripts/release-notes.py` (run by
-`./build.sh` as the `notes` step, into `out/release-notes.md`).  They list
-the exact version and commit of everything built in: the projects in `src/`,
-Ubuntu libraries linked statically (from the build's link commands, with
-their package versions), and protocol definitions compiled in, plus the
-compiler, local patches and `Hyprland --version`.  GitHub's list of merged
-pull requests follows.  CI shows the same notes on each run's summary page.  Install and test it,
+publishes a GitHub **pre-release** with it attached.
+
+Its release notes come from `scripts/release_notes.py` (the `notes` step of
+`./build.sh`, writing `out/release-notes.md`).  They list the exact version
+and commit of everything built in: the projects in `src/`, Ubuntu libraries
+linked statically (with their package versions), and protocol definitions
+compiled in, plus the compiler, local patches and `Hyprland --version`.
+GitHub's list of merged pull requests follows.  CI shows the same notes on
+each run's summary page.
+
+The static archives must match `STATIC_ARCHIVES` in
+`scripts/release_notes.py`.  If a new Hyprland adds or drops a static
+dependency, writing the notes and the build tests fail until that list (and,
+for a new project, the tables after it) is updated.  Install and test it,
 then promote it to a full release (Edit, untick "Set as a pre-release") so
 it reaches other users.
 
@@ -153,6 +160,26 @@ in; run it from a clone of this repo):
 CI packages are versioned just below the next release, e.g. `0.56.2-3~ci57`
 before `v0.56.2-3`.  Installing one upgrades from the last release, and the
 release replaces it when you install that.
+
+## Python scripts and tests
+
+The scripts in `scripts/*.py` only need Ubuntu's `python3`.  Their checks
+use [uv](https://docs.astral.sh/uv/) (`pyproject.toml`, `uv.lock`):
+
+    uv run ruff format --check     # formatting
+    uv run ruff check              # lint, including required type annotations
+    uv run ty check                # type checking
+    uv run pytest                  # unit tests; fails below 91% coverage
+
+`.github/workflows/python.yml` runs these on every pull request and push to
+`main` (the **Python checks** status check).
+
+Tests marked `build` need a finished `./build.sh` and check the static
+dependencies in Hyprland's actual link commands (`ninja -t commands`)
+against `STATIC_ARCHIVES` and the release notes.  CI runs them after its
+build:
+
+    uv run pytest -m build --no-cov
 
 ## CI
 

@@ -3,3 +3,8 @@
 /stage/
 /logs/
 /out/
+.venv/
+__pycache__/
+.coverage
+.pytest_cache/
+.ruff_cache/

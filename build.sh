@@ -292,7 +292,7 @@ step_package() {
 
 # Release notes listing exactly what went into the binaries (out/release-notes.md).
 step_notes() {
-  DEB_REVISION=$DEB_REVISION "$TOP/scripts/release-notes.py" --out "$OUT/release-notes.md"
+  (cd "$TOP" && DEB_REVISION=$DEB_REVISION python3 -m scripts.release_notes --out "$OUT/release-notes.md")
 }
 
 BUILD_STEPS=(wayland_protocols glaze hyprwayland_scanner hyprutils hyprlang hyprwire

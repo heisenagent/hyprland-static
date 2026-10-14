@@ -39,6 +39,15 @@ jobs:
           DEB_REVISION: ${{ steps.version.outputs.revision }}
         run: ./build.sh
 
+      # Compare the static dependencies in Hyprland's actual link commands
+      # with the declared list and the release notes (tests marked "build").
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Check the static dependencies against the release notes
+        run: uv run --locked pytest -m build --no-cov -v
+
       - name: Show the release notes in the run summary
         run: cat out/release-notes.md >> "$GITHUB_STEP_SUMMARY"
 
