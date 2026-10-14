@@ -17,6 +17,4 @@ Description: Hyprland built with statically linked Hyprland libraries
  .
  Installs into /opt/hyprland-static and adds a "Hyprland (static)" entry to
  the login screen.  Ubuntu's hyprland package (recommended) stays available
- as a fallback session and provides the desktop portal configuration.  Also
- includes brightnessctl built with logind support, so brightness keys work
- without membership in the "video" group.
+ as a fallback session and provides the desktop portal configuration.

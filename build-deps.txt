@@ -39,7 +39,6 @@ librsvg2-dev
 libseat-dev
 libspng-dev
 libssl-dev
-libsystemd-dev
 libtomlplusplus-dev
 libudev-dev
 libudis86-dev

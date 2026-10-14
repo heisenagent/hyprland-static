@@ -187,19 +187,6 @@ step_hyprland() {
   DESTDIR="$STAGE" cmake --install "$BUILD/Hyprland"
 }
 
-# brightnessctl with logind support, so the brightness keys work without
-# membership in the "video" group (Ubuntu's build only writes to sysfs
-# directly).  It lands first in the session's PATH.
-step_brightnessctl() {
-  rm -rf "$BUILD/brightnessctl"
-  cp -a "$SRC/brightnessctl" "$BUILD/brightnessctl"
-  (
-    cd "$BUILD/brightnessctl"
-    make ENABLE_SYSTEMD=1 PREFIX="$FINAL_PREFIX"
-    make install ENABLE_SYSTEMD=1 PREFIX="$FINAL_PREFIX" DESTDIR="$STAGE"
-  )
-}
-
 # Session launcher and login-screen entry; drop what a static build can't
 # use (plugin headers and hyprpm, which builds plugins against them).
 step_extras() {
@@ -242,10 +229,10 @@ step_test_stage() {
   XDG_RUNTIME_DIR=$(mktemp -d)
   export XDG_RUNTIME_DIR
   "$bin/Hyprland" --version | grep -q "^Hyprland $(hyprland_version) "
-  for b in Hyprland hyprctl start-hyprland brightnessctl hyprland-static-session; do
+  for b in Hyprland hyprctl start-hyprland hyprland-static-session; do
     [ -x "$bin/$b" ] || { echo "$b: missing" >&2; return 1; }
   done
-  for b in Hyprland hyprctl start-hyprland brightnessctl; do
+  for b in Hyprland hyprctl start-hyprland; do
     if ldd "$bin/$b" | grep -E 'not found|libhypr|libaquamarine'; then
       echo "$b: unexpected dynamic libraries" >&2
       return 1
@@ -267,7 +254,7 @@ step_package() {
 
   install -D -m 644 "$TOP/packaging/copyright" "$pkg/usr/share/doc/$NAME/copyright"
   local p
-  for p in Hyprland hyprutils hyprlang hyprwire hyprgraphics hyprcursor aquamarine glaze brightnessctl; do
+  for p in Hyprland hyprutils hyprlang hyprwire hyprgraphics hyprcursor aquamarine glaze; do
     {
       printf '\nFiles: bundled %s (commit %s)\n' "$p" "$(git -C "$SRC/$p" rev-parse --short=12 HEAD)"
       sed 's/^$/./; s/^/ /' "$SRC"/$p/LICENSE*
@@ -292,7 +279,7 @@ step_package() {
 }
 
 BUILD_STEPS=(wayland_protocols glaze hyprwayland_scanner hyprutils hyprlang hyprwire
-             hyprgraphics hyprcursor aquamarine hyprland brightnessctl extras)
+             hyprgraphics hyprcursor aquamarine hyprland extras)
 TEST_STEPS=(test_stage)
 [ "$WITH_TESTS" = 1 ] && TEST_STEPS+=(test_libs test_hyprland)
 ALL=("${BUILD_STEPS[@]}" "${TEST_STEPS[@]}" package)

@@ -48,8 +48,3 @@
 	url = https://gitlab.freedesktop.org/wayland/wayland-protocols.git
 	shallow = true
 	ignore = dirty
-[submodule "src/brightnessctl"]
-	path = src/brightnessctl
-	url = https://github.com/Hummer12007/brightnessctl.git
-	shallow = true
-	ignore = dirty

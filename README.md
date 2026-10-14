@@ -25,13 +25,7 @@ Then log out and pick **Hyprland (static)** at the login screen.  Remove it
 with `sudo apt remove hyprland-static`.
 
 The session launcher puts `/opt/hyprland-static/bin` first in `PATH`, so
-commands run from the session use the matching tools:
-
-- `hyprctl` matches the running Hyprland.
-- `brightnessctl` is built with logind support, so brightness keys (and
-  hypridle's dimming) work without being in the `video` group.  That's how
-  GNOME and Arch's brightnessctl do it; Ubuntu's brightnessctl only writes to
-  sysfs directly, which needs the group.
+`hyprctl` in scripts and keybindings matches the running Hyprland.
 
 Not included: `hyprpm` and the plugin headers.  Plugins expect a dynamically
 linked Hyprland.
@@ -123,5 +117,5 @@ and ccache.
 
 The build scripts are BSD-3-Clause (see `LICENSE`).  The package bundles the
 projects in `src/` under their own licenses (BSD-3-Clause for the Hyprland
-projects, MIT for glaze and brightnessctl); the package's
+projects, MIT for glaze); the package's
 `/usr/share/doc/hyprland-static/copyright` includes them all.
