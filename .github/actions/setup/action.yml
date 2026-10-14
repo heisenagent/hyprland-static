@@ -2,13 +2,15 @@ name: Set up build environment
 description: >
   Install the Ubuntu build dependencies (from build-deps.txt) and restore the
   ccache cache.  Downloaded .deb files are cached, so later runs install the
-  build tools without downloading them again.
+  build tools without downloading them again.  This only restores the caches;
+  the workflows save them at the end (see the save-caches action), even when
+  the build fails.
 
 runs:
   using: composite
   steps:
     - name: Restore cached build-tool packages
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ~/apt-archives
         key: apt-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-deps.txt') }}
@@ -26,7 +28,7 @@ runs:
         sudo chown -R "$USER" ~/apt-archives
 
     - name: Restore ccache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ~/.cache/ccache
         # ccache matches by content, so any recent cache helps: save one per

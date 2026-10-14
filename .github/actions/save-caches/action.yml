@@ -1,0 +1,20 @@
+name: Save caches
+description: >
+  Save the build-tool packages and ccache restored by the setup action.  Run
+  with `if: always()`, so a failing build or test still warms the caches for
+  the next run.  Saving a key that already exists is skipped with a warning.
+
+runs:
+  using: composite
+  steps:
+    - name: Save build-tool packages
+      uses: actions/cache/save@v4
+      with:
+        path: ~/apt-archives
+        key: apt-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-deps.txt') }}
+
+    - name: Save ccache
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}

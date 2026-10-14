@@ -44,6 +44,9 @@ jobs:
           DEB_REVISION: ${{ steps.version.outputs.revision }}
         run: ./build.sh
 
+      - uses: ./.github/actions/save-caches
+        if: always()
+
       - name: Attach the package to the release
         env:
           GH_TOKEN: ${{ github.token }}

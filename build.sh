@@ -242,6 +242,9 @@ step_test_stage() {
   XDG_RUNTIME_DIR=$(mktemp -d)
   export XDG_RUNTIME_DIR
   "$bin/Hyprland" --version | grep -q "^Hyprland $(hyprland_version) "
+  for b in Hyprland hyprctl start-hyprland brightnessctl hyprland-static-session; do
+    [ -x "$bin/$b" ] || { echo "$b: missing" >&2; return 1; }
+  done
   for b in Hyprland hyprctl start-hyprland brightnessctl; do
     if ldd "$bin/$b" | grep -E 'not found|libhypr|libaquamarine'; then
       echo "$b: unexpected dynamic libraries" >&2
