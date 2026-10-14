@@ -1,7 +1,8 @@
 name: Release
 
 # Publishing a GitHub release builds the .deb for that tag and attaches it.
-# The tag must be the Hyprland submodule's tag (e.g. v0.56.2), optionally
+# The tag must be "v" plus the Hyprland submodule's version (e.g. v0.56.2,
+# from src/Hyprland/VERSION, which matches Hyprland's release tag), optionally
 # followed by -N, which becomes the Debian revision (v0.56.2-2 -> 0.56.2-2).
 
 on:
@@ -25,7 +26,7 @@ jobs:
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          hyprland=$(git -C src/Hyprland describe --tags --exact-match)
+          hyprland=v$(cat src/Hyprland/VERSION)
           if [ "$TAG" = "$hyprland" ]; then
             revision=1
           elif [[ "$TAG" =~ ^${hyprland//./\\.}-([1-9][0-9]*)$ ]]; then

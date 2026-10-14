@@ -101,8 +101,9 @@ cmake_test() {
     ${CTEST_EXCLUDE:+--exclude-regex "$CTEST_EXCLUDE"}
 }
 
+# From Hyprland's VERSION file: CI checks out submodules without their tags.
 hyprland_version() {
-  git -C "$SRC/Hyprland" describe --tags --exact-match | sed 's/^v//'
+  cat "$SRC/Hyprland/VERSION"
 }
 
 ### Build-time dependencies ###
@@ -265,7 +266,7 @@ step_package() {
   local p
   for p in Hyprland hyprutils hyprlang hyprwire hyprgraphics hyprcursor aquamarine glaze brightnessctl; do
     {
-      printf '\nFiles: bundled %s (%s)\n' "$p" "$(git -C "$SRC/$p" describe --tags --exact-match)"
+      printf '\nFiles: bundled %s (commit %s)\n' "$p" "$(git -C "$SRC/$p" rev-parse --short=12 HEAD)"
       sed 's/^$/./; s/^/ /' "$SRC"/$p/LICENSE*
     } >> "$pkg/usr/share/doc/$NAME/copyright"
   done
