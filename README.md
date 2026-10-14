@@ -116,7 +116,13 @@ Release by pushing a tag:
     git push origin v0.56.2-3
 
 `.github/workflows/release.yml` then builds and tests the `.deb` and
-publishes a GitHub **pre-release** with it attached.  Install and test it,
+publishes a GitHub **pre-release** with it attached.  Its release notes come from `scripts/release-notes.py` (run by
+`./build.sh` as the `notes` step, into `out/release-notes.md`).  They list
+the exact version and commit of everything built in: the projects in `src/`,
+Ubuntu libraries linked statically (from the build's link commands, with
+their package versions), and protocol definitions compiled in, plus the
+compiler, local patches and `Hyprland --version`.  GitHub's list of merged
+pull requests follows.  CI shows the same notes on each run's summary page.  Install and test it,
 then promote it to a full release (Edit, untick "Set as a pre-release") so
 it reaches other users.
 
