@@ -50,6 +50,15 @@ def test_newest_release_without_tags(tmp_path: Path) -> None:
             "https://gitlab.freedesktop.org/wayland/wayland-protocols.git",
             "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/tags/v1",
         ),
+        # Only the host counts, not "github.com" elsewhere in the URL.
+        (
+            "https://example.org/github.com/x.git",
+            "https://example.org/github.com/x/-/tags/v1",
+        ),
+        (
+            "https://github.com.example.org/x.git",
+            "https://github.com.example.org/x/-/tags/v1",
+        ),
     ],
 )
 def test_release_link(url: str, link: str) -> None:

@@ -17,6 +17,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from scripts.common import ROOT, Submodule, git, remote_tags, run, submodules, version
 
@@ -45,8 +46,9 @@ def newest_release(name: str, tags: dict[str, str], root: Path = ROOT) -> str | 
 
 
 def release_link(url: str, tag: str) -> str:
+    """A link to a tag's release page: GitHub's, or GitLab's for anything else."""
     base = url.removesuffix(".git")
-    if "github.com" in base:
+    if urlsplit(url).hostname == "github.com":
         return f"{base}/releases/tag/{tag}"
     return f"{base}/-/tags/{tag}"
 
