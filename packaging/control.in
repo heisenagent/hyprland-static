@@ -1,14 +1,14 @@
 Package: hyprland-static
 Version: @VERSION@
 Architecture: @ARCH@
-Maintainer: heisenagent <297739722+heisenagent@users.noreply.github.com>
+Maintainer: Heisencoder <hyprland-static@heisencoder.net>
 Installed-Size: @SIZE@
 Depends: @DEPENDS@
 Recommends: hyprland, xdg-desktop-portal-hyprland, xwayland
 Suggests: hyprlock, hypridle, hyprpolkitagent, waybar
 Section: x11
 Priority: optional
-Homepage: https://github.com/heisenagent/hyprland-static
+Homepage: https://github.com/heisencoder/hyprland-static
 Description: Hyprland built with statically linked Hyprland libraries
  A newer Hyprland than the Ubuntu LTS release ships, built against that
  release.  Hyprland's own libraries (hyprutils, hyprlang, hyprwire,

@@ -49,7 +49,7 @@ jobs:
       - name: Move submodules to their latest releases
         id: update
         if: steps.existing.outputs.held != 'true'
-        run: python3 scripts/update-deps.py --out "$RUNNER_TEMP/update" >> "$GITHUB_OUTPUT"
+        run: python3 -m scripts.update_deps --out "$RUNNER_TEMP/update" >> "$GITHUB_OUTPUT"
 
       - name: Open or refresh the pull request
         if: steps.update.outputs.changed == 'true'

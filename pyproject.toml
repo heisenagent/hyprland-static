@@ -1,0 +1,66 @@
+[project]
+name = "hyprland-static"
+version = "0"
+description = "Helper scripts for building and releasing hyprland-static"
+readme = "README.md"
+license = "BSD-3-Clause"
+# The scripts run with Ubuntu 26.04's python3 (3.14) and only need the
+# standard library; the dev group is for tests and checks.
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=9.1",
+  "pytest-cov>=7.1",
+  "ruff>=0.17",
+  "ty>=0.0.87",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["src", "deps", "build", "stage", "out", "logs"]
+
+[tool.ruff.lint]
+select = [
+  "ANN",  # type annotations on every function
+  "B",    # bugbear
+  "C4",   # comprehensions
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # import sorting
+  "N",    # naming
+  "PT",   # pytest style
+  "PTH",  # pathlib
+  "RUF",  # ruff-specific
+  "SIM",  # simplifications
+  "UP",   # modern syntax
+  "W",    # pycodestyle warnings
+]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+include = ["scripts", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "--strict-markers",
+  "--cov=scripts",
+  "--cov-report=term-missing",
+  # Tests that need a finished ./build.sh run separately, in CI after the
+  # build: pytest -m build --no-cov
+  "-m", "not build",
+]
+markers = ["build: needs a completed ./build.sh (run with: pytest -m build --no-cov)"]
+
+[tool.coverage.report]
+fail_under = 91
+show_missing = true
+exclude_also = ['if __name__ == "__main__":']

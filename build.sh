@@ -9,7 +9,7 @@
 #   deps/    build-time prefix for the static libraries and tools
 #   build/   CMake/Meson build directories
 #   stage/   DESTDIR for the final install (what goes into the .deb)
-#   out/     the .deb
+#   out/     the .deb and its release notes
 #   logs/    one log per step
 #
 # Usage: ./build.sh [step...]   (default: build, test and package)
@@ -290,11 +290,16 @@ step_package() {
   dpkg-deb --info "$OUT/${NAME}_${version}_${arch}.deb"
 }
 
+# Release notes listing exactly what went into the binaries (out/release-notes.md).
+step_notes() {
+  (cd "$TOP" && DEB_REVISION=$DEB_REVISION python3 -m scripts.release_notes --out "$OUT/release-notes.md")
+}
+
 BUILD_STEPS=(wayland_protocols glaze hyprwayland_scanner hyprutils hyprlang hyprwire
              hyprgraphics hyprcursor aquamarine hyprland extras)
 TEST_STEPS=(test_stage)
 [ "$WITH_TESTS" = 1 ] && TEST_STEPS+=(test_libs test_hyprland)
-ALL=("${BUILD_STEPS[@]}" "${TEST_STEPS[@]}" package)
+ALL=("${BUILD_STEPS[@]}" "${TEST_STEPS[@]}" package notes)
 STEPS=("${@:-${ALL[@]}}")
 
 for s in "${STEPS[@]}"; do

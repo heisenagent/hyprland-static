@@ -1,0 +1,44 @@
+name: Python
+
+# Checks for the Python scripts in scripts/ and their tests: formatting,
+# lint (including required type annotations), type checking, and the unit
+# tests with coverage.  The tests that need a real build run in ci.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: python-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Python checks
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+
+      - name: Install the tools (uv.lock)
+        run: uv sync --locked
+
+      - name: Formatting (ruff format)
+        run: uv run ruff format --check
+
+      - name: Lint (ruff check)
+        run: uv run ruff check
+
+      - name: Types (ty check)
+        run: uv run ty check
+
+      - name: Unit tests with coverage (pytest)
+        run: uv run pytest
