@@ -60,7 +60,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "$BOT_EMAIL"
           git switch -c "$BRANCH"
-          git add src
+          git add src .gitmodules
           git commit -q -F "$OUT/commit.txt"
 
           # Skip the push (and a needless CI run) if the branch already has

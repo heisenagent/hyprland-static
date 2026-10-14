@@ -18,6 +18,7 @@
 #   JOBS          parallel jobs (default: nproc)
 #   WITH_TESTS    1 to build and run the unit tests (default: 1)
 #   DEB_REVISION  Debian revision of the package version (default: 1)
+#   CC, CXX       compilers (default: gcc-16, g++-16)
 set -euo pipefail
 
 TOP=$(cd "$(dirname "$0")" && pwd)
@@ -32,6 +33,12 @@ FINAL_PREFIX=/opt/$NAME
 JOBS=${JOBS:-$(nproc)}
 WITH_TESTS=${WITH_TESTS:-1}
 DEB_REVISION=${DEB_REVISION:-1}
+
+# GCC 16, Ubuntu 26.04's non-default compiler (a pre-release snapshot,
+# package g++-16).  Hyprland needs its C++ library (std::ranges::starts_with),
+# and with it Hyprland builds from unmodified upstream source.  Ubuntu 26.04's
+# C++ runtime (libstdc++6) already comes from the same GCC 16 build.
+export CC=${CC:-gcc-16} CXX=${CXX:-g++-16}
 
 export PKG_CONFIG_PATH=$DEPS/lib/pkgconfig:$DEPS/share/pkgconfig
 export PATH=$DEPS/bin:$PATH
@@ -55,16 +62,6 @@ add_requires() {
   local pc=$DEPS/lib/pkgconfig/$1.pc
   shift
   grep -q '^Requires:' "$pc" || echo "Requires: $*" >> "$pc"
-}
-
-# Apply patches/<project>-*.patch to src/<project>, skipping applied ones.
-apply_patches() {
-  local patch
-  for patch in "$TOP"/patches/"$1"-*.patch; do
-    [ -e "$patch" ] || continue
-    git -C "$SRC/$1" apply --reverse --check "$patch" 2>/dev/null ||
-      git -C "$SRC/$1" apply "$patch"
-  done
 }
 
 cmake_lib() {
@@ -185,9 +182,24 @@ step_aquamarine() {
 
 ### Hyprland ###
 
+# Put Hyprland on upstream's release branch, if .gitmodules names one (set
+# by scripts/update_deps.py only when exactly one upstream branch is at the
+# pinned commit), so --version reports it.  Only when the checkout is the
+# pinned commit; otherwise the branch stays empty.
+checkout_hyprland_branch() {
+  local branch
+  branch=$(git -C "$TOP" config -f .gitmodules --get submodule.src/Hyprland.branch || true)
+  [ -n "$branch" ] || return 0
+  if [ "$(git -C "$TOP" submodule status src/Hyprland | cut -c1)" != " " ]; then
+    echo "src/Hyprland isn't at its pinned commit; leaving the branch empty" >&2
+    return 0
+  fi
+  git -C "$SRC/Hyprland" checkout -q -B "$branch"
+}
+
 step_hyprland() {
-  apply_patches Hyprland
   fetch_hyprland_tag
+  checkout_hyprland_branch
   cmake -S "$SRC/Hyprland" -B "$BUILD/Hyprland" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$FINAL_PREFIX" \
@@ -228,7 +240,6 @@ step_test_libs() {
 # Hyprland's own unit tests (hyprland_gtests).  Its full compositor tests
 # (hyprtester) need a GPU, so they aren't built.
 step_test_hyprland() {
-  apply_patches Hyprland
   TEST_TARGET=hyprland_gtests cmake_test Hyprland
 }
 
@@ -241,6 +252,14 @@ step_test_stage() {
   export XDG_RUNTIME_DIR
   "$bin/Hyprland" --version | grep -q "^Hyprland $(hyprland_version) "
   "$bin/Hyprland" --version | grep -q "^Tag: v$(hyprland_version),"
+  # Built from unmodified upstream source, and on upstream's release branch
+  # when .gitmodules names one.
+  "$bin/Hyprland" --version | grep -q " at commit [0-9a-f]* clean ("
+  local branch
+  branch=$(git -C "$TOP" config -f .gitmodules --get submodule.src/Hyprland.branch || true)
+  if [ -n "$branch" ]; then
+    "$bin/Hyprland" --version | grep -qF "built from branch $branch at commit"
+  fi
   for b in Hyprland hyprctl start-hyprland hyprland-static-session; do
     [ -x "$bin/$b" ] || { echo "$b: missing" >&2; return 1; }
   done

@@ -43,11 +43,31 @@ linked Hyprland.
 | Path | What |
 |---|---|
 | `src/` | upstream projects as git submodules, pinned to release tags |
-| `patches/` | local fixes, applied by `build.sh` as `patches/<project>-*.patch` |
 | `packaging/` | session launcher, login entry, Debian control template |
 | `deps/`, `build/`, `stage/`, `out/`, `logs/` | build output (ignored by git) |
 
+### Compiler and clean source
+
+`build.sh` compiles with **GCC 16** (`gcc-16`/`g++-16`), Ubuntu 26.04's
+non-default compiler, a pre-release snapshot.  Hyprland needs its C++
+library (`std::ranges::starts_with`, which GCC 15 lacks), and with it
+Hyprland builds from **unmodified upstream source**: `Hyprland --version`
+reports `clean`, and the build's checks fail if it doesn't.  Ubuntu 26.04's
+C++ runtime (`libstdc++6`, installed everywhere) already comes from the same
+GCC 16 build.
+
+`--version` also names the branch Hyprland was built from.  `.gitmodules`
+records upstream's release branch for the pinned commit (e.g. `v0.56.2-b`),
+and `build.sh` checks the commit out on a local branch of that name.
+`scripts/update_deps.py` sets it only when exactly one upstream branch
+(other than the default branch) points at that commit, and removes it
+otherwise; the name is never derived from the version.  Without it, the
+branch in `--version` is empty.
+
 ### Workarounds in build.sh
+
+These change the libraries' build setup, not their code; the release notes
+list them too.
 
 - **Static libraries:** each library's CMakeLists hardcodes `SHARED`;
   build.sh switches it to `STATIC` and adds the missing `Requires:` lines to
@@ -59,9 +79,6 @@ linked Hyprland.
   `wl_*_interface` / `xdg_*_interface` from the same XML.  build.sh makes
   aquamarine's copies local with objcopy (with shared libraries, Hyprland's
   copies win at runtime anyway).
-- **GCC 15:** `patches/Hyprland-gcc15-ranges-starts-with.patch` replaces the
-  one use of `std::ranges::starts_with` (GCC 16's libstdc++) with its
-  definition in terms of `std::ranges::mismatch`.
 
 ## Tests
 
@@ -70,7 +87,8 @@ linked Hyprland.
 - the libraries' own unit tests and Hyprland's unit tests, each in a
   separate Debug build (their test builds add sanitizers and coverage
   instrumentation that the release build mustn't have);
-- checks on the staged binaries: version, no dynamically linked Hyprland
+- checks on the staged binaries: version and release tag, `clean` source,
+  the release branch (if recorded), no dynamically linked Hyprland
   libraries, nothing missing, and `Hyprland --verify-config` on
   `packaging/test.conf`.
 
@@ -94,8 +112,11 @@ If anything changed, it pushes the branch `deps/update`, opens (or
 refreshes) a pull request listing the new versions and the next release tag,
 and starts CI on it.  Nothing is merged or released automatically.
 
-If a new Hyprland needs more than a version bump (a patch that no longer
-applies, a new build dependency), push fixes to `deps/update`.  Once it has
+For Hyprland it also records upstream's release branch in `.gitmodules` (see
+"Compiler and clean source").
+
+If a new Hyprland needs more than a version bump (a new build dependency, a
+build setup change), push fixes to `deps/update`.  Once it has
 commits from anyone but the bot, the workflow leaves that PR alone.
 
 The GitHub Actions used by the workflows are kept up to date by Dependabot
@@ -122,7 +143,7 @@ Its release notes come from `scripts/release_notes.py` (the `notes` step of
 `./build.sh`, writing `out/release-notes.md`).  They list the exact version
 and commit of everything built in: the projects in `src/`, Ubuntu libraries
 linked statically (with their package versions), and protocol definitions
-compiled in, plus the compiler, local patches and `Hyprland --version`.
+compiled in, plus the compiler, the build adjustments and `Hyprland --version`.
 GitHub's list of merged pull requests follows.  CI shows the same notes on
 each run's summary page.
 

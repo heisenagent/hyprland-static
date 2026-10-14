@@ -49,7 +49,12 @@ UBUNTU_OWNERS = {
     "libSPIRV.a": "glslang-dev",
     "liblcms2_fast_float.a": "liblcms2-dev",
     "liblcms2_threaded.a": "liblcms2-dev",
+    "g++-16": "g++-16",
 }
+VERSION_CLEAN = (
+    "Hyprland 0.56.2 built from branch v0.56.2-b at commit "
+    "efb50993780079460b0cbed1363e2166a2de1d9f clean ([gha] Nix: update inputs)."
+)
 
 
 def write_archive(path: Path, empty: bool = False) -> None:
@@ -72,8 +77,11 @@ def fake_root(tmp_path: Path) -> Path:
     ninja.write_text(fake_ninja().format(deps=deps, usr=usr))
     (root / "src/Hyprland").mkdir(parents=True)
     (root / "src/Hyprland/VERSION").write_text("0.56.2\n")
-    (root / "patches").mkdir()
-    (root / "patches/Hyprland-fix.patch").write_text("")
+    (root / "build/Hyprland/CMakeCache.txt").write_text(
+        "# This is the CMakeCache file.\n"
+        "CMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc-16\n"
+        "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++-16\n"
+    )
     binary = root / "stage/opt/hyprland-static/bin/Hyprland"
     binary.parent.mkdir(parents=True)
     binary.write_text('#!/bin/sh\necho "Hyprland 0.56.2 built from branch  ($XDG_RUNTIME_DIR)"\n')
@@ -83,21 +91,26 @@ def fake_root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def fake_tools(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ...]]:
-    """Stand-ins for gcc, dpkg and dpkg-query; other commands run for real."""
+    """Stand-ins for g++-16, dpkg and dpkg-query; other commands run for real."""
     calls: list[tuple[str, ...]] = []
     real_run = rn.run
 
-    def run(*cmd: str | Path, cwd: Path = rn.ROOT, env: dict[str, str] | None = None) -> str:
+    def run(
+        *cmd: str | Path,
+        cwd: Path = rn.ROOT,
+        env: dict[str, str] | None = None,
+        check: bool = True,
+    ) -> str:
         args = tuple(str(c) for c in cmd)
         calls.append(args)
         match args:
-            case ("gcc", "-dumpfullversion"):
-                return "15.2.0"
+            case ("/usr/bin/g++-16", "-dumpfullversion"):
+                return "16.0.1"
             case ("dpkg", "-S", path):
                 return f"{UBUNTU_OWNERS[Path(path).name]}: {path}"
             case ("dpkg-query", "-W", "-f=${Version}", package):
-                return {"gcc-15": "15.2.0-16ubuntu1"}.get(package, f"{package}-version")
-        return real_run(*cmd, cwd=cwd, env=env)
+                return {"g++-16": "16-20260322-1ubuntu1"}.get(package, f"{package}-version")
+        return real_run(*cmd, cwd=cwd, env=env, check=check)
 
     monkeypatch.setattr(rn, "run", run)
     monkeypatch.setattr(rn, "submodules", lambda root: [])
@@ -164,7 +177,7 @@ def test_upstream_tag(tmp_path: Path, git_repo: Callable[..., GitRun]) -> None:
 
 def test_dpkg_helpers(fake_tools: list[tuple[str, ...]]) -> None:
     assert rn.dpkg_owner("/usr/lib/libglslang.a") == "glslang-dev"
-    assert rn.dpkg_version("gcc-15") == "15.2.0-16ubuntu1"
+    assert rn.dpkg_version("g++-16") == "16-20260322-1ubuntu1"
 
 
 def test_distro_name(tmp_path: Path) -> None:
@@ -233,10 +246,10 @@ def sample_notes(**changes: object) -> rn.Notes:
         hyprland_version="0.56.2",
         revision="3",
         distro="Ubuntu 26.04.1 LTS",
-        gcc="15.2.0",
-        gcc_package="15.2.0-16ubuntu1",
-        patches=["Hyprland-fix.patch"],
-        version_output="Hyprland 0.56.2",
+        compiler="g++-16",
+        compiler_version="16.0.1",
+        compiler_package="`g++-16` 16-20260322-1ubuntu1",
+        version_output=VERSION_CLEAN,
         source_rows=["| src row |"],
         ubuntu_rows=["| ubuntu row |"],
         compiled_in_rows=["| compiled-in row |"],
@@ -254,15 +267,39 @@ def test_render() -> None:
     assert "sudo apt install ./hyprland-static_0.56.2-3_amd64.deb" in text
     for row in ["| src row |", "| ubuntu row |", "| compiled-in row |"]:
         assert row in text
-    assert "GCC 15.2.0 (`gcc-15` 15.2.0-16ubuntu1)" in text
-    assert "Local patches: `Hyprland-fix.patch`" in text
-    assert "```\nHyprland 0.56.2\n```" in text
+    assert "Compiler: `g++-16` 16.0.1 (Ubuntu package `g++-16` 16-20260322-1ubuntu1)" in text
+    assert "Hyprland: unmodified upstream source (`--version` reports `clean`)" in text
+    for adjustment in rn.BUILD_ADJUSTMENTS:
+        assert f"  - {adjustment}" in text
+    assert f"```\n{VERSION_CLEAN}\n```" in text
 
 
-def test_render_without_ubuntu_archives_or_patches() -> None:
-    text = rn.render(sample_notes(ubuntu_rows=[], patches=[]))
-    assert "| (none) | | | |" in text
-    assert "Local patches: none" in text
+def test_render_without_ubuntu_archives() -> None:
+    assert "| (none) | | | |" in rn.render(sample_notes(ubuntu_rows=[]))
+
+
+@pytest.mark.parametrize(
+    ("version_output", "state"),
+    [
+        (VERSION_CLEAN, "unmodified upstream source (`--version` reports `clean`)"),
+        (
+            VERSION_CLEAN.replace(" clean ", " dirty "),
+            "modified (`--version` doesn't report `clean`)",
+        ),
+        ("Hyprland 0.56.2", "modified (`--version` doesn't report `clean`)"),
+    ],
+)
+def test_source_state(version_output: str, state: str) -> None:
+    assert rn.source_state(version_output) == state
+
+
+def test_cmake_cache_value(tmp_path: Path) -> None:
+    cache = tmp_path / "CMakeCache.txt"
+    cache.write_text("// comment\nCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++-16\nFOO=bar=baz\n")
+    assert rn.cmake_cache_value(cache, "CMAKE_CXX_COMPILER") == "/usr/bin/g++-16"
+    assert rn.cmake_cache_value(cache, "FOO") == "bar=baz"
+    with pytest.raises(KeyError, match="MISSING not in"):
+        rn.cmake_cache_value(cache, "MISSING")
 
 
 # --- Collecting and main ---
@@ -272,9 +309,9 @@ def test_collect(fake_root: Path, fake_tools: list[tuple[str, ...]]) -> None:
     notes = rn.collect("3", fake_root)
     assert notes.hyprland_version == "0.56.2"
     assert notes.revision == "3"
-    assert notes.gcc == "15.2.0"
-    assert notes.gcc_package == "15.2.0-16ubuntu1"
-    assert notes.patches == ["Hyprland-fix.patch"]
+    assert notes.compiler == "g++-16"
+    assert notes.compiler_version == "16.0.1"
+    assert notes.compiler_package == "`g++-16` 16-20260322-1ubuntu1"
     assert notes.version_output.startswith("Hyprland 0.56.2")
     assert [r.split(" | ")[0] for r in notes.ubuntu_rows] == ["| `glslang-dev`", "| `liblcms2-dev`"]
     assert notes.compiled_in_rows == [

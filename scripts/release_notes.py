@@ -8,7 +8,7 @@ cover:
 - Ubuntu libraries linked statically, with the Ubuntu package and version
   that provided them;
 - protocol definitions from Ubuntu compiled into Hyprland;
-- the build environment, local patches, and `Hyprland --version`.
+- the build environment, build adjustments, and `Hyprland --version`.
 
 The static archives found in the build's link commands must match
 STATIC_ARCHIVES below.  If a new Hyprland adds or drops one, this fails
@@ -74,6 +74,16 @@ COMPILED_INTO = {
     "hyprwayland-scanner": [],
 }
 
+# What build.sh changes in the other projects' build setup (see build.sh).
+BUILD_ADJUSTMENTS = [
+    "hyprutils, hyprlang, hyprwire, hyprgraphics, hyprcursor, aquamarine: "
+    "built as static instead of shared libraries",
+    "aquamarine: its copies of the Wayland protocol tables made local, "
+    "so they don't collide with Hyprland's identical ones",
+    "wayland-protocols: optional C enum headers generated without `--strict`, "
+    "which Ubuntu 26.04's wayland-scanner rejects for some newer files",
+]
+
 # Ubuntu packages whose files are compiled into Hyprland at build time.
 UBUNTU_COMPILED_IN = {
     "hyprland-protocols": "Hyprland protocol definitions",
@@ -138,9 +148,9 @@ class Notes:
     hyprland_version: str
     revision: str
     distro: str
-    gcc: str
-    gcc_package: str
-    patches: list[str]
+    compiler: str  # the C++ compiler's name, e.g. "g++-16"
+    compiler_version: str  # its version, e.g. "16.0.1"
+    compiler_package: str  # the Ubuntu package and version that provided it
     version_output: str
     source_rows: list[str] = field(default_factory=list)
     ubuntu_rows: list[str] = field(default_factory=list)
@@ -184,10 +194,15 @@ def ubuntu_rows(archives: dict[str, list[str]], root: Path) -> list[str]:
     ]
 
 
+def source_state(version_output: str) -> str:
+    """Whether Hyprland was built from unmodified upstream source, per its --version."""
+    if re.search(r" at commit \S+ clean ", version_output):
+        return "unmodified upstream source (`--version` reports `clean`)"
+    return "modified (`--version` doesn't report `clean`)"
+
+
 def render(notes: Notes) -> str:
-    major = notes.gcc.split(".")[0]
     deb = f"hyprland-static_{notes.hyprland_version}-{notes.revision}_amd64.deb"
-    patches = ", ".join(f"`{p}`" for p in notes.patches) or "none"
     return f"""\
 Hyprland **{notes.hyprland_version}** for **{notes.distro}**, \
 package version `{notes.hyprland_version}-{notes.revision}`.
@@ -222,8 +237,11 @@ dynamically from Ubuntu; see the package's `Depends`.
 
 ## Build
 
-- {notes.distro}, GCC {notes.gcc} (`gcc-{major}` {notes.gcc_package})
-- Local patches: {patches}
+- {notes.distro}
+- Compiler: `{notes.compiler}` {notes.compiler_version} (Ubuntu package {notes.compiler_package})
+- Hyprland: {source_state(notes.version_output)}
+- Build adjustments to the libraries (no code changes):
+{chr(10).join(f"  - {a}" for a in BUILD_ADJUSTMENTS)}
 
 <details><summary><code>Hyprland --version</code></summary>
 
@@ -236,6 +254,15 @@ copies of its libraries, but this build has them built in.
 
 </details>
 """
+
+
+def cmake_cache_value(cache: Path, name: str) -> str:
+    """A variable from a CMakeCache.txt (lines like NAME:TYPE=value)."""
+    for line in cache.read_text().splitlines():
+        key, _, value = line.partition("=")
+        if key.split(":")[0] == name:
+            return value
+    raise KeyError(f"{name} not in {cache}")
 
 
 def distro_name(os_release: Path = Path("/etc/os-release")) -> str:
@@ -263,14 +290,15 @@ def collect(revision: str, root: Path = ROOT) -> Notes:
             "scripts/release_notes.py (and its tables, for a new project):\n  "
             + "\n  ".join(problems)
         )
-    gcc = run("gcc", "-dumpfullversion")
+    compiler = cmake_cache_value(root / "build/Hyprland/CMakeCache.txt", "CMAKE_CXX_COMPILER")
+    package = dpkg_owner(compiler)
     return Notes(
         hyprland_version=(root / "src/Hyprland/VERSION").read_text().strip(),
         revision=revision,
         distro=distro_name(),
-        gcc=gcc,
-        gcc_package=dpkg_version(f"gcc-{gcc.split('.')[0]}"),
-        patches=sorted(p.name for p in (root / "patches").glob("*.patch")),
+        compiler=Path(compiler).name,
+        compiler_version=run(compiler, "-dumpfullversion"),
+        compiler_package=f"`{package}` {dpkg_version(package)}",
         version_output=hyprland_version_output(root / "stage/opt/hyprland-static/bin/Hyprland"),
         source_rows=source_rows(submodules(root), archives, root),
         ubuntu_rows=ubuntu_rows(archives, root),
