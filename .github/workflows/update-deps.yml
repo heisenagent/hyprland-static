@@ -1,0 +1,84 @@
+name: Update dependencies
+
+# Daily: move the submodules in src/ to their newest upstream releases and
+# open (or refresh) a pull request for review.  CI builds and tests it.
+# Nothing is merged or released automatically.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write       # push the update branch
+  pull-requests: write  # open the PR
+  actions: write        # start CI on it
+
+concurrency:
+  group: update-deps
+
+env:
+  BRANCH: deps/update
+  GH_TOKEN: ${{ github.token }}
+  BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+jobs:
+  update:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # Once someone has pushed their own commits to the update branch (say,
+      # to fix the build for a new Hyprland), stop refreshing it.
+      - name: Check for an update PR with manual changes
+        id: existing
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          held=false
+          if [ -n "$pr" ] && git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"; then
+            if git log --format=%ae "origin/main..origin/$BRANCH" | grep -qvF "$BOT_EMAIL"; then
+              held=true
+              echo "::notice::PR #$pr has manual commits; leaving it alone"
+            fi
+          fi
+          echo "held=$held" >> "$GITHUB_OUTPUT"
+
+      - name: Move submodules to their latest releases
+        id: update
+        if: steps.existing.outputs.held != 'true'
+        run: python3 scripts/update-deps.py --out "$RUNNER_TEMP/update" >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the pull request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          PR: ${{ steps.existing.outputs.pr }}
+          OUT: ${{ runner.temp }}/update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "$BOT_EMAIL"
+          git switch -c "$BRANCH"
+          git add src
+          git commit -q -F "$OUT/commit.txt"
+
+          # Skip the push (and a needless CI run) if the branch already has
+          # exactly these versions.
+          if git fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" 2>/dev/null &&
+            git diff --quiet "origin/$BRANCH" HEAD; then
+            echo "The update PR is already up to date"
+            exit 0
+          fi
+          git push -f origin "$BRANCH"
+
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --title "$(cat "$OUT/title.txt")" --body-file "$OUT/summary.md"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "$(cat "$OUT/title.txt")" --body-file "$OUT/summary.md"
+          fi
+
+          # Pushes made with the workflow's own token don't trigger other
+          # workflows, so start CI explicitly.  Its result shows on the PR.
+          gh workflow run ci.yml --ref "$BRANCH"

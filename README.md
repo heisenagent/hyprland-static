@@ -79,39 +79,81 @@ compositor tests (`hyprtester`, a GPU), hyprcursor's tests (an installed
 hyprcursor theme) and aquamarine's `simpleWindow` (a running Wayland
 compositor).
 
-## Updating to a new Hyprland
+## Dependency updates
 
-1. Move the submodules to the new release tags:
+`.github/workflows/update-deps.yml` runs daily (and on demand from the
+Actions tab).  It runs `scripts/update-deps.py`, which moves each submodule
+in `src/` to its newest upstream release tag:
 
-       git -C src/Hyprland fetch --depth 1 origin tag v0.57.0
-       git -C src/Hyprland checkout v0.57.0
-       git -C src/Hyprland submodule update --init --recursive --depth 1
+- Hyprland first, then the rest;
+- glaze only within the major versions the new Hyprland accepts
+  (`find_package(glaze 7...<8)` in its CMakeLists);
+- wayland-protocols from freedesktop's GitLab, the rest from GitHub.
 
-   Do the same for any library whose minimum version went up (see
-   `src/Hyprland/CMakeLists.txt`).  glaze must stay within the major version
-   Hyprland asks for.
-2. Run `./build.sh`; fix or drop patches as needed.
-3. Open a PR.  CI builds and tests it on `ubuntu-26.04`.
+If anything changed, it pushes the branch `deps/update`, opens (or
+refreshes) a pull request listing the new versions and the next release tag,
+and starts CI on it.  Nothing is merged or released automatically.
+
+If a new Hyprland needs more than a version bump (a patch that no longer
+applies, a new build dependency), push fixes to `deps/update`.  Once it has
+commits from anyone but the bot, the workflow leaves that PR alone.
+
+The GitHub Actions used by the workflows are kept up to date by Dependabot
+(`.github/dependabot.yml`).  Dependabot can't do the submodules: it only
+moves them to the newest commit, not the newest release.
+
+To update by hand instead, on a clean checkout:
+
+    scripts/update-deps.py --out /tmp/update
 
 ## Releases
 
-Publishing a GitHub release builds the `.deb` and attaches it.  The tag must
-be the Hyprland submodule's tag, optionally followed by `-N`:
+Release by pushing a tag:
+
+    scripts/next-release.sh          # prints the next tag, e.g. "v0.56.2-3 3"
+    git fetch origin
+    git tag v0.56.2-3 origin/main
+    git push origin v0.56.2-3
+
+`.github/workflows/release.yml` then builds and tests the `.deb` and
+publishes a GitHub **pre-release** with it attached.  Install and test it,
+then promote it to a full release (Edit, untick "Set as a pre-release") so
+it reaches other users.
+
+Releases are immutable once published (a repository setting), so the
+package has to be attached when the release is created.  Don't create
+releases in GitHub's web UI; push a tag instead.
+
+The tag must be the Hyprland submodule's version, optionally followed by
+`-N`; anything else fails the release build:
 
 | Tag | Package version |
 |---|---|
 | `v0.56.2` | `0.56.2-1` |
 | `v0.56.2-2` | `0.56.2-2` |
 
-Use `-N` to release packaging or build fixes for the same Hyprland version.
-Any other tag fails the release build.
+Use `-N` for packaging, build or library updates with the same Hyprland
+version.
+
+## Testing builds before release
+
+Every CI run uploads its `.deb` as an artifact.  To install the latest
+successful build of a pull request or branch (needs the GitHub CLI, logged
+in; run it from a clone of this repo):
+
+    scripts/install-ci-build.sh 12      # PR #12
+    scripts/install-ci-build.sh main
+
+CI packages are versioned just below the next release, e.g. `0.56.2-3~ci57`
+before `v0.56.2-3`.  Installing one upgrades from the last release, and the
+release replaces it when you install that.
 
 ## CI
 
 `.github/workflows/ci.yml` runs `./build.sh` on pushes to `main` and on pull
 requests, on GitHub's `ubuntu-26.04` runner, and uploads the `.deb` as an
 artifact.  Caches: the build-tool `.deb` files (keyed on `build-deps.txt`)
-and ccache.
+and ccache.  Both are saved even when the build fails.
 
 ## License
 

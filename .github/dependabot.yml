@@ -1,0 +1,9 @@
+# Keep the GitHub Actions used by the workflows up to date.  The submodules
+# in src/ are handled by .github/workflows/update-deps.yml instead:
+# Dependabot can only move them to the newest commit, not the newest release.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

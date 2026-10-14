@@ -18,13 +18,25 @@ jobs:
     name: Build, test and package
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - uses: ./.github/actions/setup
 
+      # Version CI packages just below the next release (e.g. 0.56.2-3~ci57
+      # before v0.56.2-3), so installing one upgrades from the last release
+      # and the release later upgrades from it.
+      - name: Choose the package version
+        id: version
+        run: |
+          read -r tag revision < <(scripts/next-release.sh)
+          echo "revision=${revision}~ci${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "Next release: $tag"
+
       - name: Build, test and package
+        env:
+          DEB_REVISION: ${{ steps.version.outputs.revision }}
         run: ./build.sh
 
       - name: ccache statistics
@@ -35,7 +47,7 @@ jobs:
         if: always()
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hyprland-static-deb
           path: out/*.deb
@@ -43,7 +55,7 @@ jobs:
 
       - name: Upload logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-logs
           path: logs/
