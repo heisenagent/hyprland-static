@@ -8,13 +8,13 @@ runs:
   using: composite
   steps:
     - name: Save build-tool packages
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/apt-archives
         key: apt-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-deps.txt') }}
 
     - name: Save ccache
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/.cache/ccache
         key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}

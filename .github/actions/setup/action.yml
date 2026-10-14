@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Restore cached build-tool packages
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ~/apt-archives
         key: apt-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build-deps.txt') }}
@@ -28,7 +28,7 @@ runs:
         sudo chown -R "$USER" ~/apt-archives
 
     - name: Restore ccache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ~/.cache/ccache
         # ccache matches by content, so any recent cache helps: save one per

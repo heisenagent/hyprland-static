@@ -1,30 +1,38 @@
 name: Release
 
-# Publishing a GitHub release builds the .deb for that tag and attaches it.
+# Pushing a tag builds the .deb and publishes a GitHub *pre-release* with it
+# attached.  Install and test it, then promote it to a full release (Edit ->
+# untick "Set as a pre-release"), so other users get it.
+#
 # The tag must be "v" plus the Hyprland submodule's version (e.g. v0.56.2,
 # from src/Hyprland/VERSION, which matches Hyprland's release tag), optionally
 # followed by -N, which becomes the Debian revision (v0.56.2-2 -> 0.56.2-2).
+# scripts/next-release.sh prints the next tag to use.
+#
+# Releases are immutable once published, so the package must be attached
+# when the release is created: create releases by pushing a tag, not in
+# GitHub's web UI.
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
 
 jobs:
   deb:
-    name: Build .deb
+    name: Build .deb and publish a pre-release
     runs-on: ubuntu-26.04
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Check the tag against the Hyprland submodule
         id: version
-        env:
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           hyprland=v$(cat src/Hyprland/VERSION)
           if [ "$TAG" = "$hyprland" ]; then
@@ -47,15 +55,19 @@ jobs:
       - uses: ./.github/actions/save-caches
         if: always()
 
-      - name: Attach the package to the release
+      # gh creates the release as a draft, uploads the package and then
+      # publishes it, so the package is part of the immutable release.
+      - name: Publish the pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" out/*.deb --clobber
+        run: |
+          gh release create "$TAG" out/*.deb --verify-tag --prerelease \
+            --title "Hyprland $(cat src/Hyprland/VERSION) for Ubuntu 26.04 ($TAG)" \
+            --generate-notes
 
       - name: Upload logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-logs
           path: logs/
