@@ -5,6 +5,7 @@ cpio
 dpkg-dev
 file
 g++
+g++-16
 git
 glslang-dev
 glslang-tools

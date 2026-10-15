@@ -184,3 +184,30 @@ def test_main_refuses_a_dirty_submodule(tmp_path: Path, git_repo: Callable[..., 
     (root / "src/hyprutils/VERSION").write_text("local change\n")
     with pytest.raises(SystemExit, match="src/hyprutils has local changes"):
         update_deps.main(["--out", str(tmp_path / "out")], root)
+
+
+def gitmodules_branch(root: Path) -> str:
+    return git_in(root)(
+        "config", "-f", ".gitmodules", "--default", "", "--get", "submodule.src/Hyprland.branch"
+    )
+
+
+def test_main_records_hyprlands_release_branch(
+    tmp_path: Path, git_repo: Callable[..., GitRun], capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = make_superproject(tmp_path, git_repo, {"Hyprland": (["v0.1.0", "v0.2.0"], "v0.1.0")})
+    # Upstream's main also points at v0.2.0, but as the default branch it doesn't count.
+    git_in(tmp_path / "upstream/Hyprland")("branch", "v0.2.0-b", "v0.2.0")
+    update_deps.main(["--out", str(tmp_path / "out")], root)
+    assert gitmodules_branch(root) == "v0.2.0-b"
+    assert "Hyprland: release branch v0.2.0-b" in capsys.readouterr().err
+
+
+def test_main_removes_a_stale_release_branch(
+    tmp_path: Path, git_repo: Callable[..., GitRun], capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = make_superproject(tmp_path, git_repo, {"Hyprland": (["v0.1.0", "v0.2.0"], "v0.1.0")})
+    git_in(root)("config", "-f", ".gitmodules", "submodule.src/Hyprland.branch", "v0.1.0-b")
+    update_deps.main(["--out", str(tmp_path / "out")], root)
+    assert gitmodules_branch(root) == ""
+    assert "Hyprland: no unique release branch at" in capsys.readouterr().err

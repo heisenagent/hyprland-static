@@ -19,7 +19,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from scripts.common import ROOT, Submodule, git, remote_tags, run, submodules, version
+from scripts.common import (
+    ROOT,
+    Submodule,
+    branch_at,
+    git,
+    remote_tags,
+    run,
+    submodules,
+    version,
+)
 
 
 @dataclass(frozen=True)
@@ -73,7 +82,33 @@ def update_submodule(mod: Submodule, root: Path = ROOT) -> Update | None:
     git("-c", "advice.detachedHead=false", "checkout", "-q", latest, cwd=sub)
     if mod.name == "Hyprland":
         git("submodule", "update", "-q", "--init", "--recursive", "--depth", "1", cwd=sub)
+        record_release_branch(mod, tags[latest], root)
     return Update(mod.name, mod.url, current, latest)
+
+
+def record_release_branch(mod: Submodule, commit: str, root: Path = ROOT) -> None:
+    """Record upstream's release branch for the pinned commit in .gitmodules.
+
+    build.sh checks the commit out on a local branch of that name, so
+    `Hyprland --version` reports it.  Without exactly one upstream branch at
+    the commit (see branch_at), the setting is removed and the branch stays
+    empty.
+    """
+    branch = branch_at(mod.url, commit)
+    if branch:
+        git("config", "-f", ".gitmodules", f"{mod.section}.branch", branch, cwd=root)
+        print(f"{mod.name}: release branch {branch}", file=sys.stderr)
+    else:
+        git(
+            "config",
+            "-f",
+            ".gitmodules",
+            "--unset-all",
+            f"{mod.section}.branch",
+            cwd=root,
+            check=False,
+        )
+        print(f"{mod.name}: no unique release branch at {commit[:12]}", file=sys.stderr)
 
 
 def write_pr_files(updates: list[Update], next_tag: str, out: Path) -> None:
